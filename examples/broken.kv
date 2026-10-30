@@ -1,0 +1,5 @@
+model llama3_8b {
+  layers 32; kv_head 8
+}
+cache { max_context 8k; quantize int9 }
+target gpu "A100"

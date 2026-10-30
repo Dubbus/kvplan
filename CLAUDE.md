@@ -39,7 +39,7 @@ Only the lead runs `git commit`. Workers leave changes uncommitted and report ba
   npm/yarn packages. Tests use `node:test` + `node:assert/strict`.
 - Type stripping rules: use `import type` for type-only imports, include the
   `.ts` extension in relative imports, no `enum`/`namespace`/parameter properties.
-- Run tests: `node --test test/` · Run CLI: `node src/cli.ts fit examples/llama3_8b.kv --gpu A10G`
+- Run tests: `node --test 'test/*.test.ts'` (a bare directory arg fails on Node 23) · Run CLI: `node src/cli.ts fit examples/llama3_8b.kv --gpu A10G`
 - Sizes: `GB` = 1e9 bytes, `GiB` = 2^30 bytes. Be explicit in output which you show.
 
 ## Domain notes

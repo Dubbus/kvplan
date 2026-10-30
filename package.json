@@ -7,7 +7,7 @@
   "bin": { "kvplan": "src/cli.ts" },
   "engines": { "node": ">=23.6" },
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test 'test/*.test.ts'",
     "kvplan": "node src/cli.ts"
   }
 }

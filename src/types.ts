@@ -24,6 +24,7 @@ export const DTYPE_BYTES: Record<DType, number> = {
 export interface Plan {
   model: {
     name: string;
+    preset?: string; // preset key this model came from (== name, or the `from` target)
     layers: number;
     numHeads: number; // query heads
     kvHeads: number; // numHeads / kvHeads = GQA group size
