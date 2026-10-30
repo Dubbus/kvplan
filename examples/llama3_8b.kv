@@ -1,0 +1,7 @@
+model llama3_8b {
+  layers 32; kv_heads 8; head_dim 128; dtype fp16
+}
+cache {
+  block_size 16; max_context 8192; quantize int8
+}
+target gpu "A10G" { memory 24GB }
