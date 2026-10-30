@@ -106,7 +106,7 @@ The playground runs the same compiler as the CLI. `scripts/build-web.ts` strips 
 - [x] Validation pass: presets, units (`24GB`, `8k`, `8.03B`), "did you mean" suggestions
 - [x] Memory and capacity passes, max batch for each context length
 - [x] vLLM flag generation
-- [ ] **Validation against real vLLM runs** (harness built, results pending): [`notebooks/validate_vllm.ipynb`](notebooks/validate_vllm.ipynb) runs vLLM on a Colab GPU and records the KV cache it actually allocates. [`validation/compare.ts`](validation/compare.ts) then reports two errors: the formula alone, and end to end with the uncalibrated activation reserve.
+- [ ] **Validation against real vLLM runs** (first result in; more models pending). On a T4 with Qwen2.5-0.5B, the per-token formula matches vLLM's allocation to **0.03%**, which is within vLLM's own log rounding. The end-to-end prediction is **−7.7%**: the uncalibrated 1.5 GiB reserve is conservative for small models, whose measured overhead was 0.61 GiB. Tools: [`notebooks/validate_vllm.ipynb`](notebooks/validate_vllm.ipynb) runs vLLM on a Colab GPU and records the KV cache it actually allocates. [`validation/compare.ts`](validation/compare.ts) then reports two errors: the formula alone, and end to end with the uncalibrated activation reserve.
 
   [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Dubbus/kvplan/blob/main/notebooks/validate_vllm.ipynb)
 - [x] Web playground: live editor, memory breakdown, capacity chart, GQA and paged-block layout diagrams, shareable links
