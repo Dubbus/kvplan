@@ -28,8 +28,8 @@ Two Claude Code sessions work in this directory at once. Edit only your files.
 
 | Owner | Files |
 |---|---|
-| Lead (front end) | `src/types.ts`, `src/lexer.ts`, `src/parser.ts`, `src/ast.ts`, `src/errors.ts`, `src/validate.ts`, `src/cli.ts`, `test/front*.test.ts`, `examples/`, `CLAUDE.md`, `package.json` |
-| Worker (back end) | `src/memory.ts`, `src/capacity.ts`, `src/presets.ts`, `src/codegen/vllm.ts`, `test/back*.test.ts` |
+| Lead (front end) | `src/types.ts`, `src/lexer.ts`, `src/parser.ts`, `src/ast.ts`, `src/errors.ts`, `src/validate.ts`, `src/cli.ts`, `test/front*.test.ts`, `examples/`, `web/`, `scripts/`, `README.md`, `CLAUDE.md`, `package.json` |
+| Worker (back end) | `src/memory.ts`, `src/capacity.ts`, `src/presets.ts`, `src/codegen/vllm.ts`, `test/back*.test.ts`, `notebooks/`, `validation/` |
 
 Only the lead runs `git commit`. Workers leave changes uncommitted and report back.
 

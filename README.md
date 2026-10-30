@@ -1,6 +1,8 @@
 # kvplan
 
-> 🚧 **In progress.** The v1 CLI works. Validation against real vLLM runs and a web playground are underway. See [Status](#status).
+> 🚧 **In progress.** The CLI and the [web playground](https://dubbus.github.io/kvplan/) work. Validation against real vLLM runs is underway. See [Status](#status).
+
+**[Try it in the browser →](https://dubbus.github.io/kvplan/)** Edit the plan on the left; the memory breakdown, capacity chart, cache layout and vLLM command update as you type.
 
 **Will this model fit on my GPU, and how should I configure its KV cache?**
 
@@ -93,7 +95,10 @@ Requires Node ≥ 23.6. It has **zero dependencies**: Node runs the TypeScript d
 node src/cli.ts fit   <file.kv> [--gpu NAME] [--json]
 node src/cli.ts check <file.kv> [--gpu NAME]
 node --test 'test/*.test.ts'
+yarn serve        # build the playground and open http://localhost:8917
 ```
+
+The playground runs the same compiler as the CLI. `scripts/build-web.ts` strips the TypeScript types with Node's built-in `stripTypeScriptTypes`, so there's no bundler.
 
 ## Status
 
@@ -102,5 +107,5 @@ node --test 'test/*.test.ts'
 - [x] Memory and capacity passes, max batch for each context length
 - [x] vLLM flag generation
 - [ ] **Validation against real vLLM runs:** measure actual KV cache capacity on GPUs and report kvplan's prediction error
-- [ ] Web playground: live editor, cache layout diagram, capacity chart
-- [ ] Side-by-side comparisons: fp16 / fp8 / int8, different block sizes
+- [x] Web playground: live editor, memory breakdown, capacity chart, GQA and paged-block layout diagrams, shareable links
+- [x] Side-by-side comparisons: 16 / 8 / 4-bit KV cache × block sizes 8 / 16 / 32

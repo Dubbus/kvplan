@@ -4,10 +4,16 @@
   "private": true,
   "type": "module",
   "description": "Plan LLM KV cache memory on a GPU and generate vLLM configs",
-  "bin": { "kvplan": "src/cli.ts" },
-  "engines": { "node": ">=23.6" },
+  "bin": {
+    "kvplan": "src/cli.ts"
+  },
+  "engines": {
+    "node": ">=23.6"
+  },
   "scripts": {
     "test": "node --test 'test/*.test.ts'",
-    "kvplan": "node src/cli.ts"
+    "kvplan": "node src/cli.ts",
+    "build:web": "node scripts/build-web.ts",
+    "serve": "node scripts/build-web.ts && python3 -m http.server 8917 -d web"
   }
 }

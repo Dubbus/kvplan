@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kvplan playground</title>
+<meta name="description" content="Will this model fit on my GPU? Plan LLM KV cache memory and generate vLLM flags, live in the browser.">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --ring: rgba(11, 11, 11, 0.10);
+  --s1: #2a78d6; /* weights / 16-bit */
+  --s2: #eb6834; /* reserve / 8-bit */
+  --s3: #1baf7a; /* KV cache / 4-bit */
+  --held: #e1e0d9;
+  --seq: #6da7ec;
+  --seq-hl: #1c5cab;
+  --tail: #cde2fb;
+  --good: #0ca30c;
+  --good-text: #006300;
+  --critical: #d03b3b;
+  --warning-ink: #8a5a00;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --ring: rgba(255, 255, 255, 0.10);
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --held: #383835;
+    --seq: #256abf;
+    --seq-hl: #86b6ef;
+    --tail: #184f95;
+    --good-text: #0ca30c;
+    --warning-ink: #fab219;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --grid: #2c2c2a; --axis: #383835;
+  --ring: rgba(255, 255, 255, 0.10); --s1: #3987e5; --s2: #d95926; --s3: #199e70; --held: #383835;
+  --seq: #256abf; --seq-hl: #86b6ef; --tail: #184f95; --good-text: #0ca30c; --warning-ink: #fab219;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+header {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px;
+  padding: 16px 24px; border-bottom: 1px solid var(--ring);
+}
+header h1 { font-size: 18px; margin: 0; font-family: var(--mono); }
+header p { margin: 0; color: var(--ink-2); flex: 1; min-width: 200px; }
+header a { color: var(--ink-2); }
+
+main {
+  display: grid; grid-template-columns: minmax(320px, 5fr) 7fr; gap: 16px;
+  padding: 16px 24px 48px; max-width: 1440px; margin: 0 auto;
+}
+@media (max-width: 900px) {
+  main { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+  header { padding: 16px; }
+}
+.editor-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+@media (min-width: 901px) { .editor-col { position: sticky; top: 16px; align-self: start; } }
+.out-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.out-col.stale { opacity: 0.45; transition: opacity 0.2s; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 16px;
+  min-width: 0;
+}
+.card h2 { font-size: 13px; font-weight: 600; margin: 0 0 2px; }
+.card .sub { color: var(--ink-2); margin: 0 0 12px; font-size: 13px; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.toolbar label { color: var(--ink-2); font-size: 12px; display: flex; gap: 6px; align-items: center; }
+select, button {
+  font: inherit; font-size: 13px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--ring); border-radius: 6px; padding: 4px 8px;
+}
+button { cursor: pointer; }
+button:hover, select:hover { border-color: var(--axis); }
+textarea {
+  width: 100%; min-height: 280px; resize: vertical; padding: 12px;
+  font: 13px/1.6 var(--mono); color: var(--ink); background: var(--surface);
+  border: 1px solid var(--ring); border-radius: 10px; tab-size: 2;
+}
+textarea:focus { outline: 2px solid var(--s1); outline-offset: -1px; }
+pre {
+  margin: 0; font: 12px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere;
+}
+#diagnostics { padding: 12px; border-radius: 10px; border: 1px solid var(--ring); background: var(--surface); }
+#diagnostics .ok { color: var(--good-text); }
+#diagnostics .error { color: var(--critical); }
+#diagnostics .warning { color: var(--warning-ink); }
+
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 600px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+.tile { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 12px 14px; }
+.tile .label { color: var(--ink-2); font-size: 12px; }
+.tile .value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tile .note { color: var(--muted); font-size: 12px; }
+.fit-yes { color: var(--good-text); }
+.fit-no { color: var(--critical); }
+
+/* Memory bar */
+.membar { display: flex; gap: 2px; height: 28px; }
+.membar > div { min-width: 2px; }
+.membar > div:first-child { border-radius: 4px 0 0 4px; }
+.membar > div:last-child { border-radius: 0 4px 4px 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: 12px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.legend b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.over { color: var(--critical); font-size: 12px; margin-top: 6px; }
+
+/* Charts */
+svg text { font-family: system-ui, sans-serif; }
+.chart { position: relative; }
+#tooltip {
+  position: fixed; pointer-events: none; z-index: 10; display: none;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--ring); border-radius: 8px;
+  padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); max-width: 260px;
+}
+#tooltip .row { display: flex; gap: 8px; align-items: center; font-variant-numeric: tabular-nums; }
+#tooltip i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--ink-2); font-weight: 500; font-size: 12px; }
+tr.current td { font-weight: 600; }
+tr.current td:first-child::after { content: " ← your plan"; color: var(--muted); font-weight: 400; font-size: 12px; }
+.scroll-x { overflow-x: auto; }
+
+/* Paged block pool */
+.pool { display: grid; gap: 2px; grid-template-columns: repeat(auto-fill, minmax(9px, 1fr)); }
+.pool > div { aspect-ratio: 1; border-radius: 2px; background: var(--seq); }
+.pool > div.free { background: transparent; box-shadow: inset 0 0 0 1px var(--axis); }
+.pool > div.tail { background: var(--tail); }
+.pool.focus > div:not(.hl) { opacity: 0.25; }
+.pool.focus > div.hl { background: var(--seq-hl); }
+.anatomy { font: 12px/1.7 var(--mono); color: var(--ink-2); margin-top: 12px; overflow-wrap: anywhere; }
+.anatomy b { color: var(--ink); }
+
+.cmd { position: relative; }
+.cmd pre { padding: 12px; background: var(--page); border-radius: 8px; border: 1px solid var(--ring); }
+.cmd button { position: absolute; top: 8px; right: 8px; }
+footer { color: var(--muted); font-size: 12px; text-align: center; padding: 0 16px 32px; }
+footer a { color: var(--ink-2); }
+</style>
+</head>
+<body>
+<header>
+  <h1>kvplan</h1>
+  <p>Will this model fit on my GPU, and how should I configure its KV cache?</p>
+  <a href="https://github.com/Dubbus/kvplan">GitHub</a>
+</header>
+
+<main>
+  <section class="editor-col">
+    <div class="toolbar">
+      <label>Model <select id="preset"></select></label>
+      <label>GPU <select id="gpu"></select></label>
+      <button id="share" type="button">Copy link</button>
+    </div>
+    <textarea id="src" spellcheck="false" aria-label="kvplan source"></textarea>
+    <div id="diagnostics" aria-live="polite"></div>
+  </section>
+
+  <section class="out-col" id="out">
+    <div class="tiles" id="tiles"></div>
+
+    <div class="card">
+      <h2>GPU memory</h2>
+      <p class="sub" id="mem-sub"></p>
+      <div class="membar" id="membar"></div>
+      <div class="legend" id="mem-legend"></div>
+      <div class="over" id="mem-over"></div>
+    </div>
+
+    <div class="card">
+      <h2>Max concurrent sequences by context length</h2>
+      <p class="sub">Same model and GPU, three KV cache precisions. Log scales; a missing point means not even one sequence fits.</p>
+      <div class="chart" id="cap-chart"></div>
+      <div class="legend" id="cap-legend"></div>
+    </div>
+
+    <div class="card">
+      <h2>Compare configurations</h2>
+      <p class="sub" id="cmp-sub"></p>
+      <div class="scroll-x"><table id="cmp"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>Cache layout</h2>
+      <p class="sub">Grouped-query attention: query heads that share one KV head (only KV heads are cached).</p>
+      <div class="chart" id="gqa"></div>
+      <p class="sub" style="margin-top:16px" id="pool-sub"></p>
+      <div class="pool" id="pool"></div>
+      <div class="legend" id="pool-legend"></div>
+      <div class="anatomy" id="anatomy"></div>
+    </div>
+
+    <div class="card">
+      <h2>vLLM</h2>
+      <p class="sub">Paste-ready. Warnings flag anything vLLM can't do as written.</p>
+      <div class="cmd"><pre id="vllm"></pre><button id="copy" type="button">Copy</button></div>
+    </div>
+  </section>
+</main>
+<footer>The compiler running here is the same TypeScript as the CLI. Capacity includes a stated activation-reserve estimate; see the README for validation status.</footer>
+<div id="tooltip" role="tooltip"></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
