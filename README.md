@@ -34,8 +34,8 @@ kvplan · llama3_8b on A10G · KV int8, block 16
   GPU memory               22.35 GiB
   Usable                   20.12 GiB   × 0.9 utilization
   KV budget                 3.66 GiB   after weights and reserve
-  Blocks                       3,747
-  Tokens in cache             59,952
+  Blocks                       3,746
+  Tokens in cache             59,936
   Fits                           yes
 
   Max batch by context length
@@ -106,6 +106,8 @@ The playground runs the same compiler as the CLI. `scripts/build-web.ts` strips 
 - [x] Validation pass: presets, units (`24GB`, `8k`, `8.03B`), "did you mean" suggestions
 - [x] Memory and capacity passes, max batch for each context length
 - [x] vLLM flag generation
-- [ ] **Validation against real vLLM runs:** measure actual KV cache capacity on GPUs and report kvplan's prediction error
+- [ ] **Validation against real vLLM runs** (harness built, results pending): [`notebooks/validate_vllm.ipynb`](notebooks/validate_vllm.ipynb) runs vLLM on a Colab GPU and records the KV cache it actually allocates. [`validation/compare.ts`](validation/compare.ts) then reports two errors: the formula alone, and end to end with the uncalibrated activation reserve.
+
+  [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Dubbus/kvplan/blob/main/notebooks/validate_vllm.ipynb)
 - [x] Web playground: live editor, memory breakdown, capacity chart, GQA and paged-block layout diagrams, shareable links
 - [x] Side-by-side comparisons: 16 / 8 / 4-bit KV cache × block sizes 8 / 16 / 32

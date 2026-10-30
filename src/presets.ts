@@ -6,70 +6,104 @@ import type { Plan } from "./types.ts";
 const MiB = 2 ** 20;
 
 /** Architecture presets, keyed by the name used in `model <name> { ... }`.
- *  Values come from each model's Hugging Face config.json:
+ *  Verified 2026-10-30 against each repo's config.json:
  *    layers   = num_hidden_layers
  *    numHeads = num_attention_heads
  *    kvHeads  = num_key_value_heads
- *    headDim  = hidden_size / num_attention_heads (none of these set head_dim explicitly
- *               except Mistral v0.3, which sets head_dim: 128)
+ *    headDim  = hidden_size / num_attention_heads (none of these configs set head_dim)
  *    dtype    = torch_dtype
- *  params is the total parameter count listed on the model card / safetensors index. */
+ *  params is the exact safetensors total from https://huggingface.co/api/models/<repo>.
+ *  Meta's Llama repos are gated, so their config.json was read from the
+ *  ungated NousResearch/Meta-Llama-3-*-Instruct mirrors; the param counts come
+ *  from the meta-llama API metadata, which is public. */
 export const MODEL_PRESETS: Record<string, Plan["model"]> = {
-  // https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct/blob/main/config.json
-  // hidden_size 4096, 32 layers, 32 heads, 8 KV heads, bf16; 8.03B params.
+  // meta-llama/Meta-Llama-3-8B-Instruct: hidden_size 4096, 32 layers, 32 heads, 8 KV heads.
   llama3_8b: {
     name: "llama3_8b",
     layers: 32,
     numHeads: 32,
     kvHeads: 8,
     headDim: 128,
-    params: 8.03e9,
+    params: 8_030_261_248,
     dtype: "bf16",
   },
-  // https://huggingface.co/meta-llama/Meta-Llama-3-70B-Instruct/blob/main/config.json
-  // hidden_size 8192, 80 layers, 64 heads, 8 KV heads, bf16; 70.6B params.
+  // meta-llama/Meta-Llama-3-70B-Instruct: hidden_size 8192, 80 layers, 64 heads, 8 KV heads.
   llama3_70b: {
     name: "llama3_70b",
     layers: 80,
     numHeads: 64,
     kvHeads: 8,
     headDim: 128,
-    params: 70.6e9,
+    params: 70_553_706_496,
     dtype: "bf16",
   },
-  // https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3/blob/main/config.json
-  // hidden_size 4096, 32 layers, 32 heads, 8 KV heads, head_dim 128, bf16; 7.25B params.
+  // mistralai/Mistral-7B-Instruct-v0.3: hidden_size 4096, 32 layers, 32 heads, 8 KV heads,
+  // no sliding window.
   mistral_7b: {
     name: "mistral_7b",
     layers: 32,
     numHeads: 32,
     kvHeads: 8,
     headDim: 128,
-    params: 7.25e9,
+    params: 7_248_023_552,
     dtype: "bf16",
   },
-  // https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/blob/main/config.json
-  // hidden_size 3584, 28 layers, 28 heads, 4 KV heads, bf16; 7.62B params.
+  // Qwen/Qwen2.5-7B-Instruct: hidden_size 3584, 28 layers, 28 heads, 4 KV heads.
   "qwen2.5_7b": {
     name: "qwen2.5_7b",
     layers: 28,
     numHeads: 28,
     kvHeads: 4,
     headDim: 128,
-    params: 7.62e9,
+    params: 7_615_616_512,
+    dtype: "bf16",
+  },
+  // Qwen/Qwen2.5-3B-Instruct: hidden_size 2048, 36 layers, 16 heads, 2 KV heads, tied embeddings.
+  "qwen2.5_3b": {
+    name: "qwen2.5_3b",
+    layers: 36,
+    numHeads: 16,
+    kvHeads: 2,
+    headDim: 128,
+    params: 3_085_938_688,
+    dtype: "bf16",
+  },
+  // Qwen/Qwen2.5-1.5B-Instruct: hidden_size 1536, 28 layers, 12 heads, 2 KV heads, tied embeddings.
+  "qwen2.5_1.5b": {
+    name: "qwen2.5_1.5b",
+    layers: 28,
+    numHeads: 12,
+    kvHeads: 2,
+    headDim: 128,
+    params: 1_543_714_304,
+    dtype: "bf16",
+  },
+  // Qwen/Qwen2.5-0.5B-Instruct: hidden_size 896, 24 layers, 14 heads, 2 KV heads
+  // -> head_dim 64 (the only preset that isn't 128). Tied embeddings.
+  "qwen2.5_0.5b": {
+    name: "qwen2.5_0.5b",
+    layers: 24,
+    numHeads: 14,
+    kvHeads: 2,
+    headDim: 64,
+    params: 494_032_768,
     dtype: "bf16",
   },
 };
 
 /** Serving metadata that isn't part of the Plan contract: the Hugging Face repo
- *  id for `vllm serve`, and the model's native context limit
- *  (config.json max_position_embeddings). Keyed like MODEL_PRESETS. */
-export const MODEL_SERVING: Record<string, { hfId: string; maxContext: number }> = {
-  llama3_8b: { hfId: "meta-llama/Meta-Llama-3-8B-Instruct", maxContext: 8192 },
-  llama3_70b: { hfId: "meta-llama/Meta-Llama-3-70B-Instruct", maxContext: 8192 },
-  mistral_7b: { hfId: "mistralai/Mistral-7B-Instruct-v0.3", maxContext: 32768 },
-  // 32768 natively; 131072 only with YaRN rope_scaling added to config.json.
-  "qwen2.5_7b": { hfId: "Qwen/Qwen2.5-7B-Instruct", maxContext: 32768 },
+ *  id for `vllm serve`, the model's native context limit (config.json
+ *  max_position_embeddings), and whether the HF repo is gated (needs a token
+ *  and an accepted license). Keyed like MODEL_PRESETS. */
+export const MODEL_SERVING: Record<string, { hfId: string; maxContext: number; gated: boolean }> = {
+  llama3_8b: { hfId: "meta-llama/Meta-Llama-3-8B-Instruct", maxContext: 8192, gated: true },
+  llama3_70b: { hfId: "meta-llama/Meta-Llama-3-70B-Instruct", maxContext: 8192, gated: true },
+  mistral_7b: { hfId: "mistralai/Mistral-7B-Instruct-v0.3", maxContext: 32768, gated: false },
+  // Qwen2.5: 32768 natively; 131072 only with YaRN rope_scaling added to config.json.
+  "qwen2.5_7b": { hfId: "Qwen/Qwen2.5-7B-Instruct", maxContext: 32768, gated: false },
+  "qwen2.5_3b": { hfId: "Qwen/Qwen2.5-3B-Instruct", maxContext: 32768, gated: false },
+  "qwen2.5_1.5b": { hfId: "Qwen/Qwen2.5-1.5B-Instruct", maxContext: 32768, gated: false },
+  "qwen2.5_0.5b": { hfId: "Qwen/Qwen2.5-0.5B-Instruct", maxContext: 32768, gated: false },
 };
 
 /** Device memory as the driver reports it (`nvidia-smi --query-gpu=memory.total`,
@@ -77,7 +111,8 @@ export const MODEL_SERVING: Record<string, { hfId: string; maxContext: number }>
  *  --gpu-memory-utilization is a fraction of. Sources: NVIDIA product datasheets
  *  for the nominal size, and nvidia-smi output on the named instance types for
  *  the reported size. ECC on/off and driver version can shift these by a few
- *  hundred MiB. */
+ *  hundred MiB. These were recalled, not measured here; the validation notebook
+ *  records the real figure (torch.cuda.mem_get_info) for every run. */
 export const GPU_PRESETS: Record<string, { memoryBytes: number }> = {
   // AWS g5 (A10G, "24GB" GDDR6): nvidia-smi reports 23028MiB (~22.5 GiB).
   A10G: { memoryBytes: 23028 * MiB },

@@ -34,7 +34,7 @@ test("Llama 3 8B fp16 is exactly 131072 bytes/token", () => {
   const mem = computeMemory(plan({ modelDtype: "fp16", kvDtype: "fp16" }));
   assert.equal(mem.bytesPerToken, 131072);
   assert.equal(mem.bytesPerBlock, 131072 * 16);
-  assert.equal(mem.weightBytes, 8.03e9 * 2);
+  assert.equal(mem.weightBytes, 8_030_261_248 * 2);
 });
 
 test("bytesPerSequence rounds up to whole blocks", () => {
